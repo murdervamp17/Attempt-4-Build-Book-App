@@ -2,6 +2,7 @@
 <html lang="en" data-theme="light"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Paged</title>
+<link rel="preconnect" href="https://api.dictionaryapi.dev" crossorigin>
 <link rel="stylesheet" href="lib/pdf_viewer.css">
 <style>
 :root{--blue:#8fcdf4;--bd:#3f95cf;--bg:#f6fafd;--panel:#fff;--tint:#eaf5fd;--ink:#1d3347;--mute:#6d8296;--pf:none;--on:#0f2b40}
@@ -74,7 +75,7 @@ button{border:0;background:none;cursor:pointer}
 </style></head><body>
 
 <section id="lib" class="screen on">
-  <header><h1>Paged</h1><button class="ic" id="libTheme" aria-label="Display">Aa</button></header>
+  <header><h1>Paged</h1><button class="ic" id="libTheme" aria-label="Display"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="6.6"/><path d="M6.8 8.2a3.6 3.6 0 0 1 2.2-1.9" stroke-width="1.5"/><path d="M14.7 14.7c2.3 1.4 2.6 4.1 1.3 6.6"/><circle cx="16" cy="21.3" r=".6" fill="currentColor"/></svg></button></header>
   <div id="tools">
     <input id="q" type="search" placeholder="Search your books">
     <div id="row2"><button class="chip on" data-s="reading">Reading</button><button class="chip" data-s="finished">Finished</button>
@@ -91,7 +92,7 @@ button{border:0;background:none;cursor:pointer}
     <div class="t" id="title"></div>
     <button class="ic" id="star" aria-label="Bookmark this page">&#9734;</button>
     <button class="ic" id="panel" aria-label="Bookmarks and words">&#9776;</button>
-    <button class="ic" id="disp" aria-label="Display">Aa</button>
+    <button class="ic" id="disp" aria-label="Display"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="6.6"/><path d="M6.8 8.2a3.6 3.6 0 0 1 2.2-1.9" stroke-width="1.5"/><path d="M14.7 14.7c2.3 1.4 2.6 4.1 1.3 6.6"/><circle cx="16" cy="21.3" r=".6" fill="currentColor"/></svg></button>
   </div>
   <div id="stage"><div id="sheet"></div></div>
   <button id="def"></button>
@@ -271,27 +272,38 @@ document.addEventListener('selectionchange',()=>{
     if(!pdf||!s.rangeCount||!$('sheet').contains(s.anchorNode))return hideDef();
     const w=s.toString().replace(/\s+/g,' ').trim().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,'');
     if(!w||w.length>60)return hideDef();
+    if(/^[\p{L}'’-]+$/u.test(w))lookup(w).catch(()=>{});
     word=w;$('def').textContent=`Define “${w}”`;$('def').classList.add('on');
   },250);
 });
 $('def').addEventListener('mousedown',e=>e.preventDefault());
 $('def').onclick=()=>{if(word)define(word)};
 const gurl=w=>'https://www.google.com/search?q='+encodeURIComponent('define '+w);
-async function define(w){
+const done=new Map(JSON.parse(store.get('defs')||'[]')),pending=new Map();
+const dkey=w=>w.toLowerCase().replace(/['’]s$/,'');
+const fetchDef=async(k,sig)=>{const r=await fetch('https://api.dictionaryapi.dev/v2/entries/en/'+encodeURIComponent(k),{signal:sig});if(!r.ok)throw 0;return (await r.json())[0]};
+function lookup(w){
+  const k=dkey(w);
+  if(done.has(k))return Promise.resolve(done.get(k));
+  if(pending.has(k))return pending.get(k);
+  const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),7000);
+  const stems=[...new Set([k.replace(/ies$/,'y'),k.replace(/(es|s|ed|ing|ly)$/,''),k.replace(/(ed|ing)$/,'e')])].filter(x=>x.length>2&&x!==k);
+  const p=fetchDef(k,ac.signal).catch(()=>Promise.any(stems.map(x=>fetchDef(x,ac.signal)))).then(e=>{
+    const v={word:e.word,ph:e.phonetic||(e.phonetics.find(p=>p.text)||{}).text||'',m:e.meanings.slice(0,3).map(m=>({pos:m.partOfSpeech,d:m.definitions.slice(0,2).map(d=>d.definition)}))};
+    done.set(k,v);store.set('defs',JSON.stringify([...done].slice(-300)));return v
+  }).finally(()=>{clearTimeout(tm);pending.delete(k)});
+  pending.set(k,p);return p;
+}
+function define(w){
   lastDef={w,d:''};
-  const actions=(canSave)=>`<div class="btns">${canSave&&book?'<button class="btn" data-a="save">Save word</button>':''}<button class="btn o" data-a="g">Google</button></div>`;
+  const actions=`<div class="btns">${book?'<button class="btn" data-a="save">Save word</button>':''}<button class="btn o" data-a="g">Google</button></div>`;
   const bind=r=>r.onclick=e=>{const a=e.target.dataset.a;if(a==='g')window.open(gurl(w),'_blank');
     if(a==='save'){if(!book.words.some(x=>x.w.toLowerCase()===w.toLowerCase())){book.words.push(lastDef);save()}toast('Saved to Words');e.target.disabled=true}};
-  openSh(`<h2>${esc(w)}</h2><p class="m">Looking up…</p>`,bind);
-  try{
-    const r=await fetch('https://api.dictionaryapi.dev/v2/entries/en/'+encodeURIComponent(w.toLowerCase()));
-    if(!r.ok)throw 0;const e=(await r.json())[0];
-    const ph=e.phonetic||(e.phonetics.find(p=>p.text)||{}).text||'';
-    lastDef.d=e.meanings[0].definitions[0].definition;
-    openSh(`<h2>${esc(e.word)}<span class="ph">${esc(ph)}</span></h2>`+e.meanings.slice(0,3).map(m=>`<div class="pos">${esc(m.partOfSpeech)}</div><ol>${m.definitions.slice(0,2).map(d=>`<li>${esc(d.definition)}</li>`).join('')}</ol>`).join('')+actions(true),bind);
-  }catch(err){
-    openSh(`<h2>${esc(w)}</h2><p class="m">No in-app definition found (you may be offline, or this is more than one word). Try Google instead.</p>`+actions(true),bind);
-  }
+  const view=v=>{lastDef.d=v.m[0].d[0];openSh(`<h2>${esc(v.word)}<span class="ph">${esc(v.ph)}</span></h2>`+v.m.map(m=>`<div class="pos">${esc(m.pos)}</div><ol>${m.d.map(d=>`<li>${esc(d)}</li>`).join('')}</ol>`).join('')+actions,bind)};
+  const k=dkey(w);
+  if(done.has(k))return view(done.get(k));
+  openSh(`<h2>${esc(w)}</h2><p class="m">Looking up…</p>`+actions,bind);
+  lookup(w).then(view).catch(()=>openSh(`<h2>${esc(w)}</h2><p class="m">No in-app definition found (you may be offline, or this is more than one word). Try Google instead.</p>`+actions,bind));
 }
 
 /* Android back button */
