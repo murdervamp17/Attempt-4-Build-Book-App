@@ -72,10 +72,35 @@ button{border:0;background:none;cursor:pointer}
 .row .p{color:var(--bd);font-weight:700;min-width:64px;text-align:left}
 .x{font-size:22px;color:var(--mute);width:34px}
 #toast{position:fixed;top:calc(16px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:20px;font-size:14px;display:none;z-index:9}
+@keyframes in{from{opacity:0;transform:translateY(14px)}}
+@keyframes up{from{opacity:0;transform:translateY(18px) scale(.96)}}
+@keyframes pg{from{opacity:0;transform:translateX(14px)}}
+.screen.on{animation:in .32s cubic-bezier(.2,.8,.2,1)}
+.book{animation:up .4s cubic-bezier(.2,.8,.2,1) both;transition:transform .15s}
+.book:active{transform:scale(.96)}
+button{transition:transform .12s,background .2s,opacity .2s}
+button:active{transform:scale(.93)}
+#sheet canvas{animation:pg .26s cubic-bezier(.2,.8,.2,1)}
+#sheet{will-change:transform;transform-origin:50% 0;overflow:hidden}
+#stage{scroll-behavior:smooth}
+#top,#nav{transition:margin .3s cubic-bezier(.2,.8,.2,1),opacity .3s}
+body.imm #top{margin-top:-62px;opacity:0}body.imm #nav{margin-bottom:-76px;opacity:0}
+#scrim{display:block;opacity:0;pointer-events:none;transition:opacity .25s}#scrim.on{opacity:1;pointer-events:auto}
+.fi{width:100%;height:42px;border-radius:21px;border:2px solid var(--blue);background:var(--bg);padding:0 16px;margin-bottom:8px;outline:0}
+.tabs{flex-wrap:wrap}
+#splash{position:fixed;inset:0;z-index:99;background:#eaf5fd;display:flex;align-items:center;justify-content:center;transition:opacity .6s}
+#splash img{width:200px;height:200px;border-radius:44px;animation:up .9s cubic-bezier(.2,.8,.2,1) both;box-shadow:0 20px 40px -18px rgba(30,80,120,.5)}
+#splash b{position:absolute;bottom:calc(12vh + env(safe-area-inset-bottom));font-size:34px;letter-spacing:.06em;color:#1d3347;animation:up .9s .3s both}
+#splash.out{opacity:0;pointer-events:none}
+.bars{display:flex;gap:6px;align-items:flex-end;height:70px;margin-top:10px}.bars i{flex:1;background:var(--blue);border-radius:4px 4px 0 0;min-height:3px}
+#hlbar{position:fixed;left:50%;transform:translateX(-50%) translateY(10px);bottom:calc(150px + env(safe-area-inset-bottom));display:flex;gap:14px;background:var(--ink);padding:10px 16px;border-radius:28px;opacity:0;pointer-events:none;transition:opacity .2s,transform .25s cubic-bezier(.2,.8,.2,1);z-index:3}
+#hlbar.on{opacity:1;pointer-events:auto;transform:translateX(-50%)}
+#hlbar button,.dot{width:32px;height:32px;border-radius:50%;border:2px solid rgba(255,255,255,.75)}
+.dot{width:38px;height:38px;border:3px solid transparent}.dot.sel{border-color:var(--ink)}
 </style></head><body>
 
 <section id="lib" class="screen on">
-  <header><h1>Paged</h1><button class="ic" id="libTheme" aria-label="Display"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="6.6"/><path d="M6.8 8.2a3.6 3.6 0 0 1 2.2-1.9" stroke-width="1.5"/><path d="M14.7 14.7c2.3 1.4 2.6 4.1 1.3 6.6"/><circle cx="16" cy="21.3" r=".6" fill="currentColor"/></svg></button></header>
+  <header><h1>Paged</h1><button class="ic" id="statsBtn" aria-label="Reading stats"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20v-7M12 20V5M19 20v-10"/></svg></button><button class="ic" id="libTheme" aria-label="Display"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="6.6"/><path d="M6.8 8.2a3.6 3.6 0 0 1 2.2-1.9" stroke-width="1.5"/><path d="M14.7 14.7c2.3 1.4 2.6 4.1 1.3 6.6"/><circle cx="16" cy="21.3" r=".6" fill="currentColor"/></svg></button></header>
   <div id="tools">
     <input id="q" type="search" placeholder="Search your books">
     <div id="row2"><button class="chip on" data-s="reading">Reading</button><button class="chip" data-s="finished">Finished</button>
@@ -96,6 +121,7 @@ button{border:0;background:none;cursor:pointer}
   </div>
   <div id="stage"><div id="sheet"></div></div>
   <button id="def"></button>
+  <div id="hlbar"><button data-c="y" style="background:#ffd60a"></button><button data-c="b" style="background:#5ab4ff"></button><button data-c="g" style="background:#5adc78"></button><button data-c="p" style="background:#ff78aa"></button></div>
   <div id="nav">
     <button class="ic" id="prev" aria-label="Previous">&#8249;</button>
     <div id="mid"><input id="sl" type="range" min="1" max="1" value="1"><span id="lbl"></span></div>
@@ -104,6 +130,7 @@ button{border:0;background:none;cursor:pointer}
 </section>
 <div id="scrim"></div><div id="sh"><div id="shc"></div></div><div id="toast"></div>
 
+<div id="splash"><img src="icon.png" alt=""><b>Paged</b></div>
 <script src="lib/pdf.min.js"></script>
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js';
@@ -113,8 +140,10 @@ const toast=m=>{const t=$('toast');t.textContent=m;t.style.display='block';clear
 const store={get:k=>{try{return localStorage.getItem(k)}catch(e){}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
 
 /* theme */
-const THEMES=[['light','Light'],['sepia','Sepia'],['dark','Dark'],['night','Night']];
-const setTheme=t=>{document.documentElement.dataset.theme=t;store.set('theme',t)};
+const THEMES=[['auto','Auto'],['light','Light'],['sepia','Sepia'],['dark','Dark'],['night','Night']];
+const resolve=t=>t!=='auto'?t:matchMedia('(prefers-color-scheme: dark)').matches?'dark':(h=>h>=20||h<6)(new Date().getHours())?'night':'light';
+const setTheme=t=>{store.set('theme',t);document.documentElement.dataset.theme=resolve(t)};
+setInterval(()=>setTheme(store.get('theme')||'light'),300000);
 setTheme(store.get('theme')||'light');
 
 /* bottom sheet */
@@ -129,16 +158,17 @@ const dbp=new Promise((res,rej)=>{const r=indexedDB.open('pages',1);
   r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
 const tx=async(st,mode,fn)=>{const d=await dbp;return new Promise((res,rej)=>{const t=d.transaction(st,mode);const q=fn(t.objectStore(st));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)})};
 const save=()=>book&&tx('meta','readwrite',s=>s.put(book));
-let pdf=null,book=null,cur=1,zoom=1,rid=0,shelf='reading';
+let pdf=null,book=null,cur=1,zoom=1,rid=0,shelf='reading',crop=!!store.get('crop'),lastTurn=0,lastPage=0,pace=+store.get('pace')||60;
 
 /* display sheet (themes + zoom) */
 function displaySheet(){
-  const t=document.documentElement.dataset.theme;
+  const t=store.get('theme')||'light';
   openSh(`<h2>Display</h2><h3>Theme</h3><div class="btns" style="margin-top:6px">${THEMES.map(([k,n])=>`<button class="chip ${k===t?'on':''}" data-th="${k}">${n}</button>`).join('')}</div>`+
-    (pdf?`<h3>Zoom</h3><div class="btns" style="margin-top:6px;align-items:center"><button class="btn o" data-z="-1">&minus;</button><b>${Math.round(zoom*100)}%</b><button class="btn o" data-z="1">+</button></div>`:''),
+    (pdf?`<h3>Zoom</h3><div class="btns" style="margin-top:6px;align-items:center"><button class="btn o" data-z="-1">&minus;</button><b>${Math.round(zoom*100)}%</b><button class="btn o" data-z="1">+</button></div><h3>Page</h3><button class="chip ${crop?'on':''}" data-crop="1">Crop margins</button>`:''),
     r=>r.onclick=e=>{const b=e.target.closest('button');if(!b)return;
       if(b.dataset.th){setTheme(b.dataset.th);displaySheet()}
-      if(b.dataset.z){zoom=Math.max(1,Math.min(3,zoom+.25*b.dataset.z));displaySheet();show(cur)}});
+      if(b.dataset.z){zoom=Math.max(1,Math.min(4,zoom+.25*b.dataset.z));displaySheet();show(cur)}
+      if(b.dataset.crop){crop=!crop;store.set('crop',crop?'1':'');displaySheet();show(cur)}});
 }
 $('libTheme').onclick=$('disp').onclick=displaySheet;
 
@@ -151,7 +181,7 @@ async function renderLib(){
   const g=$('grid');g.replaceChildren();
   if(!list.length){g.innerHTML=`<div id="empty"><b>${all.length?'Nothing here':'No books yet'}</b>${all.length?(q?'No books match your search.':'This shelf is empty.'):'Tap Import PDF to add your first one.'}</div>`;return}
   for(const b of list){
-    const el=document.createElement('button');el.className='book';
+    const el=document.createElement('button');el.className='book';el.style.animationDelay=Math.min(g.children.length,10)*35+'ms';
     el.innerHTML='<div class="cover"><div class="prog"><i></i></div></div><div class="bt"></div><div class="m"></div>';
     el.querySelector('.cover').style.backgroundImage=b.cover?`url(${b.cover})`:'';
     el.querySelector('.prog i').style.width=(b.done?100:b.page/b.pages*100)+'%';
@@ -194,36 +224,42 @@ $('file').onchange=async e=>{
 /* reader */
 async function openBook(id){
   try{
-    book=await tx('meta','readonly',s=>s.get(id));book.marks=book.marks||[];book.words=book.words||[];
+    book=await tx('meta','readonly',s=>s.get(id));book.marks=book.marks||[];book.words=book.words||[];book.hl=book.hl||[];
     const f=await tx('files','readonly',s=>s.get(id));
     pdf=await pdfjsLib.getDocument({data:new Uint8Array(await f.blob.arrayBuffer())}).promise;
   }catch(e){return toast('Could not open this book')}
-  $('title').textContent=book.title;$('sl').max=pdf.numPages;zoom=1;
+  $('title').textContent=book.title;$('sl').max=pdf.numPages;zoom=1;lastTurn=lastPage=0;
   $('lib').classList.remove('on');$('rd').classList.add('on');
   show(book.page||1);
 }
 async function closeBook(){
-  rid++;hideDef();closeSh();$('rd').classList.remove('on');$('lib').classList.add('on');
+  rid++;hideDef();closeSh();document.body.classList.remove('imm');$('rd').classList.remove('on');$('lib').classList.add('on');
   if(pdf){pdf.destroy();pdf=null}book=null;await renderLib();
 }
 const starUI=()=>{const on=book&&book.marks.some(m=>m.p===cur);$('star').innerHTML=on?'&#9733;':'&#9734;'};
 async function show(n){
   if(!pdf)return;
   n=Math.max(1,Math.min(pdf.numPages,n));cur=n;const id=++rid;hideDef();starUI();
-  $('lbl').textContent=`Page ${n} of ${pdf.numPages}`;$('sl').value=n;
+  {const now=Date.now(),dt=(now-lastTurn)/1000;if(lastTurn&&dt>4&&dt<600&&Math.abs(n-lastPage)===1){pace=pace*.7+dt*.3;store.set('pace',pace)}if(lastPage&&n===lastPage+1)addStat('p',1);lastTurn=now;lastPage=n}
+  setLbl(n);$('sl').value=n;
   $('prev').disabled=n<=1;$('next').disabled=n>=pdf.numPages;
   const p=await pdf.getPage(n);if(id!==rid)return;
-  const stage=$('stage'),base=p.getViewport({scale:1});
-  const vp=p.getViewport({scale:(stage.clientWidth-24)/base.width*zoom}),dpr=window.devicePixelRatio||1;
-  const c=document.createElement('canvas');c.width=vp.width*dpr;c.height=vp.height*dpr;
-  c.style.width=vp.width+'px';c.style.height=vp.height+'px';
-  await p.render({canvasContext:c.getContext('2d'),viewport:vp,transform:dpr!==1?[dpr,0,0,dpr,0,0]:null}).promise;
+  const stage=$('stage'),base=p.getViewport({scale:1});let fit=(stage.clientWidth-24)/base.width,bx=0,by=0,bw=base.width,bh=base.height;
+  if(crop){const k=.35,lo=p.getViewport({scale:k}),lc=document.createElement('canvas');lc.width=lo.width;lc.height=lo.height;const lx=lc.getContext('2d',{willReadFrequently:true});
+    await p.render({canvasContext:lx,viewport:lo}).promise;if(id!==rid)return;
+    const d=lx.getImageData(0,0,lc.width,lc.height).data;let x0=lc.width,y0=lc.height,x1=0,y1=0;
+    for(let y=0;y<lc.height;y++)for(let x=0;x<lc.width;x++){const i=(y*lc.width+x)*4;if(d[i]+d[i+1]+d[i+2]<690){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}}
+    if(x1>x0&&y1>y0){const m=6;bx=Math.max(0,(x0-m)/k);by=Math.max(0,(y0-m)/k);bw=Math.min(base.width-bx,(x1-x0+2*m)/k);bh=Math.min(base.height-by,(y1-y0+2*m)/k);fit=(stage.clientWidth-24)/bw}}
+  const sc=fit*zoom,vp=p.getViewport({scale:sc}),dpr=window.devicePixelRatio||1,W=bw*sc,H=bh*sc;
+  const c=document.createElement('canvas');c.width=W*dpr;c.height=H*dpr;c.style.width=W+'px';c.style.height=H+'px';
+  await p.render({canvasContext:c.getContext('2d'),viewport:vp,transform:[dpr,0,0,dpr,-bx*sc*dpr,-by*sc*dpr]}).promise;
   if(id!==rid)return;
-  const t=document.createElement('div');t.className='textLayer';t.style.setProperty('--scale-factor',vp.scale);
+  const t=document.createElement('div');t.className='textLayer';t.style.cssText=`inset:auto;left:${-bx*sc}px;top:${-by*sc}px;width:${base.width*sc}px;height:${base.height*sc}px`;t.style.setProperty('--scale-factor',vp.scale);
   await pdfjsLib.renderTextLayer({textContentSource:await p.getTextContent(),container:t,viewport:vp}).promise;
   if(id!==rid)return;
-  const s=$('sheet');s.style.width=vp.width+'px';s.style.height=vp.height+'px';
-  s.replaceChildren(c,t);stage.scrollTo(0,0);
+  const s=$('sheet');s.style.width=W+'px';s.style.height=H+'px';s.style.transform='';
+  const hl=document.createElement('div');hl.id='hll';hl.style.cssText='position:absolute;pointer-events:none;'+t.style.cssText;curSc=sc;
+  s.replaceChildren(c,hl,t);drawHl();stage.scrollTo(0,0);
   book.page=n;book.opened=Date.now();if(n===pdf.numPages)book.done=true;save();
 }
 $('back').onclick=closeBook;
@@ -235,7 +271,7 @@ let sx=0,sy=0;
 $('stage').addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
 $('stage').addEventListener('touchend',e=>{
   const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
-  if(Math.abs(dx)>70&&Math.abs(dy)<45&&!getSelection().toString().trim()&&zoom===1)show(cur+(dx<0?1:-1));
+  if(Math.abs(dx)>70&&Math.abs(dy)<45&&!getSelection().toString().trim()&&zoom<1.05&&!pinch)show(cur+(dx<0?1:-1));
 },{passive:true});
 
 /* bookmarks & saved words */
@@ -245,8 +281,9 @@ $('star').onclick=()=>{
   save();starUI();
 };
 function panel(tab='marks'){
+  if(tab==='hl')return hlSheet();if(tab==='toc')return tocSheet();if(tab==='find')return findSheet();if(tab==='exp')return exportNotes();
   const m=book.marks.slice().sort((a,b)=>a.p-b.p),w=book.words;
-  let h=`<div class="tabs"><button class="chip ${tab==='marks'?'on':''}" data-t="marks">Bookmarks (${m.length})</button><button class="chip ${tab==='words'?'on':''}" data-t="words">Words (${w.length})</button></div>`;
+  let h=tabsRow(tab);
   h+=tab==='marks'
     ?(m.length?m.map(x=>`<div class="row"><button class="p" data-p="${x.p}">Page ${x.p}</button><input data-n="${x.p}" value="${esc(x.n)}" placeholder="Add a note"><button class="x" data-dm="${x.p}">&times;</button></div>`).join(''):'<p class="m">No bookmarks yet. Tap the star to save a page.</p>')
     :(w.length?w.map((x,i)=>`<div class="row"><button class="go" data-w="${i}"><b>${esc(x.w)}</b><span>${esc(x.d||'')}</span></button><button class="x" data-dw="${i}">&times;</button></div>`).join(''):'<p class="m">No saved words yet. Highlight a word and tap Save word.</p>');
@@ -263,15 +300,19 @@ function panel(tab='marks'){
 $('panel').onclick=()=>panel();
 
 /* highlight a word -> in-app definition */
-let word='',selT,lastDef=null;
-function hideDef(){$('def').classList.remove('on');word=''}
+let word='',selT,lastDef=null,selInfo=null,curSc=1;
+function hideDef(){$('def').classList.remove('on');$('hlbar').classList.remove('on');word=''}
 document.addEventListener('selectionchange',()=>{
   clearTimeout(selT);
   selT=setTimeout(()=>{
     const s=getSelection();
     if(!pdf||!s.rangeCount||!$('sheet').contains(s.anchorNode))return hideDef();
     const w=s.toString().replace(/\s+/g,' ').trim().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,'');
-    if(!w||w.length>60)return hideDef();
+    if(!w||w.length>800)return hideDef();
+    {const tl=$('sheet').querySelector('.textLayer');selInfo=null;
+     if(tl){const R=tl.getBoundingClientRect();selInfo={t:s.toString().replace(/\s+/g,' ').trim(),r:[...s.getRangeAt(0).getClientRects()].filter(q=>q.width>1&&q.height>1).map(q=>[(q.left-R.left)/curSc,(q.top-R.top)/curSc,q.width/curSc,q.height/curSc])}}
+     $('hlbar').classList.add('on')}
+    if(w.length>60){$('def').classList.remove('on');word='';return}
     if(/^[\p{L}'’-]+$/u.test(w))lookup(w).catch(()=>{});
     word=w;$('def').textContent=`Define “${w}”`;$('def').classList.add('on');
   },250);
@@ -310,5 +351,79 @@ function define(w){
 const App=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.App;
 if(App)App.addListener('backButton',()=>{
   if(sh.classList.contains('on'))closeSh();else if($('rd').classList.contains('on'))closeBook();else App.exitApp()});
+/* tabs, contents, search, export */
+const tabsRow=t=>`<div class="tabs">${[['marks','Bookmarks ('+book.marks.length+')'],['words','Words ('+book.words.length+')'],['hl','Highlights ('+book.hl.length+')'],['toc','Contents'],['find','Search'],['exp','Export']].map(([k,n])=>`<button class="chip ${k===t?'on':''}" data-t="${k}">${n}</button>`).join('')}</div>`;
+const bindTabs=r=>r.onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.t)return panel(b.dataset.t);if(b.dataset.p){closeSh();show(+b.dataset.p)}};
+async function tocSheet(){
+  openSh(tabsRow('toc')+'<p class="m">Loading…</p>',bindTabs);
+  const out=await pdf.getOutline(),items=[];
+  const walk=async(arr,d)=>{for(const o of arr){let p=0;try{const dest=typeof o.dest==='string'?await pdf.getDestination(o.dest):o.dest;p=await pdf.getPageIndex(dest[0])+1}catch(e){}
+    items.push([o.title,p,d]);if(o.items&&d<2)await walk(o.items,d+1)}};
+  if(out)await walk(out,0);
+  const rows=items.filter(i=>i[1]).map(i=>`<div class="row"><button class="go" data-p="${i[1]}" style="padding-left:${i[2]*16}px"><b>${esc(i[0])}</b></button><span class="m">${i[1]}</span></div>`).join('');
+  openSh(tabsRow('toc')+(rows||'<p class="m">This book has no built-in contents.</p>'),bindTabs);
+}
+function findSheet(){
+  openSh(tabsRow('find')+'<input id="fq" class="fi" type="search" placeholder="Search this book"><div id="fr"></div>',r=>{bindTabs(r);
+    r.querySelector('#fq').onchange=async e=>{const q=e.target.value.trim().toLowerCase(),fr=r.querySelector('#fr'),my=(findSheet.t=(findSheet.t||0)+1);if(!q)return;
+      fr.innerHTML='<p class="m">Searching…</p>';let out='',n=0,any=false;
+      for(let p=1;p<=pdf.numPages&&n<80;p++){if(my!==findSheet.t||!sh.classList.contains('on'))return;
+        const t=(await(await pdf.getPage(p)).getTextContent()).items.map(i=>i.str).join(' '),i=t.toLowerCase().indexOf(q);any=any||t.trim().length>0;
+        if(i>=0){n++;out+=`<div class="row"><button class="p" data-p="${p}">Page ${p}</button><span class="m">…${esc(t.slice(Math.max(0,i-30),i+60))}…</span></div>`;fr.innerHTML=out}}
+      fr.innerHTML=out||`<p class="m">${any?'No matches.':'This PDF has no readable text (it may be a scan), so it can’t be searched or highlighted.'}</p>`}});
+}
+async function exportNotes(){
+  const t=[book.title,'',...(book.marks.length?['BOOKMARKS',...book.marks.slice().sort((a,b)=>a.p-b.p).map(m=>`Page ${m.p}${m.n?': '+m.n:''}`),'']:[]),...(book.hl.length?['HIGHLIGHTS',...book.hl.slice().sort((a,b)=>a.p-b.p).map(h=>`Page ${h.p}: "${h.t}"${h.n?' - '+h.n:''}`),'']:[]),...(book.words.length?['WORDS',...book.words.map(x=>`${x.w} - ${x.d}`)]:[])].join('\n');
+  try{await navigator.share({title:book.title,text:t})}catch(e){if(e&&e.name==='AbortError')return;try{await navigator.clipboard.writeText(t);toast('Notes copied. Paste them anywhere.')}catch(_){toast('Could not export')}}
+}
+function setLbl(n){const l=Math.round((pdf.numPages-n)*pace/60),t=n>=pdf.numPages?'last page':l>=60?`~${Math.floor(l/60)}h ${l%60}m left`:`~${l} min left`;$('lbl').textContent=`Page ${n} of ${pdf.numPages} · ${t}`}
+
+/* tap: edges turn pages, centre toggles immersive; pinch to zoom */
+let pd=0,pz=1,pzn=1,pinch=false,noTap=0;const dist=e=>Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+const stg=$('stage');
+stg.addEventListener('touchstart',e=>{if(e.touches.length===2){pd=dist(e);pz=pzn=zoom;pinch=true}},{passive:true});
+stg.addEventListener('touchmove',e=>{if(pinch&&e.touches.length===2){pzn=Math.max(1,Math.min(4,pz*dist(e)/pd));$('sheet').style.transform=`scale(${pzn/zoom})`}},{passive:true});
+stg.addEventListener('touchend',e=>{if(pinch&&e.touches.length<2){pinch=false;noTap=Date.now();if(Math.abs(pzn-zoom)>.02){zoom=pzn;show(cur)}}},{passive:true});
+stg.onclick=e=>{if(Date.now()-noTap<500||getSelection().toString().trim())return;{const tl=$('sheet').querySelector('.textLayer');if(tl){const R=tl.getBoundingClientRect(),px=(e.clientX-R.left)/curSc,py=(e.clientY-R.top)/curSc,h=book.hl.find(h=>h.p===cur&&h.r.some(([x,y,w,hh])=>px>=x&&px<=x+w&&py>=y&&py<=y+hh));if(h)return editHl(h)}}
+  const r=stg.getBoundingClientRect(),x=(e.clientX-r.left)/r.width;
+  x<.22?show(cur-1):x>.78?show(cur+1):document.body.classList.toggle('imm')};
+
+/* highlights */
+const COL={y:'255,214,10',b:'90,180,255',g:'90,220,120',p:'255,120,170'};
+function drawHl(){const L=document.getElementById('hll');if(!L||!book)return;L.replaceChildren();
+  book.hl.filter(h=>h.p===cur).forEach(h=>h.r.forEach(([x,y,w,hh])=>{const d=document.createElement('div');
+    d.style.cssText=`position:absolute;left:${x*curSc}px;top:${y*curSc}px;width:${w*curSc}px;height:${hh*curSc}px;background:rgba(${COL[h.c]},.42);border-radius:2px;${h.n?`border-bottom:2px solid rgb(${COL[h.c]})`:''}`;L.appendChild(d)}))}
+$('hlbar').addEventListener('mousedown',e=>e.preventDefault());
+$('hlbar').onclick=e=>{const c=e.target.dataset.c;if(!c||!selInfo||!selInfo.r.length)return;
+  book.hl.push({p:cur,c,t:selInfo.t.slice(0,400),n:'',r:selInfo.r});save();getSelection().removeAllRanges();hideDef();drawHl();toast('Highlighted. Tap it to add a note.')};
+function editHl(h){
+  const dots=Object.keys(COL).map(k=>`<button class="dot ${k===h.c?'sel':''}" data-c="${k}" style="background:rgb(${COL[k]})"></button>`).join('');
+  openSh(`<h2 style="font-size:18px;line-height:1.4">“${esc(h.t)}”</h2><div class="btns" style="margin-top:12px">${dots}</div><textarea id="hn" class="fi" style="height:90px;border-radius:16px;padding:12px;margin-top:14px" placeholder="Add a note">${esc(h.n)}</textarea><div class="btns"><button class="btn o" data-a="del">Delete highlight</button></div>`,r=>{
+    r.querySelector('#hn').oninput=e=>{h.n=e.target.value;save();drawHl()};
+    r.onclick=e=>{const b=e.target.closest('button');if(!b)return;
+      if(b.dataset.c){h.c=b.dataset.c;save();drawHl();editHl(h)}
+      if(b.dataset.a==='del'){book.hl.splice(book.hl.indexOf(h),1);save();drawHl();closeSh()}}});
+}
+function hlSheet(){const L=book.hl.slice().sort((a,b)=>a.p-b.p);
+  openSh(tabsRow('hl')+(L.length?L.map(h=>`<div class="row"><button class="go" data-p="${h.p}" style="border-left:5px solid rgb(${COL[h.c]});padding-left:10px"><b style="font-weight:400">${esc(h.t.slice(0,140))}</b><span>Page ${h.p}${h.n?' · '+esc(h.n):''}</span></button></div>`).join(''):'<p class="m">No highlights yet. Select some text and pick a colour.</p>'),bindTabs)}
+
+/* stats */
+const stats=()=>{try{return JSON.parse(store.get('stats')||'{}')}catch(e){return{}}};
+const day=o=>new Date(Date.now()-o*864e5).toLocaleDateString('en-CA');
+function addStat(k,v){const s=stats(),d=day(0);(s[d]=s[d]||{s:0,p:0})[k]+=v;store.set('stats',JSON.stringify(s))}
+setInterval(()=>{if(pdf&&!document.hidden&&$('rd').classList.contains('on'))addStat('s',10)},10000);
+function statsSheet(){
+  const s=stats(),goal=+store.get('goal')||20,m=o=>Math.floor(((s[day(o)]||{}).s||0)/60);
+  let st=0,o=m(0)>=1?0:1;while(m(o)>=1&&o<400){st++;o++}
+  openSh(`<h2>Reading</h2><h3>Today</h3><b style="font-size:30px">${m(0)}</b> <span class="m">of ${goal} min goal · ${(s[day(0)]||{}).p||0} pages</span>
+    <div class="bars">${[6,5,4,3,2,1,0].map(o=>`<i style="height:${Math.max(3,Math.min(100,m(o)/goal*100))}%"></i>`).join('')}</div>
+    <h3>Streak</h3><b style="font-size:30px">${st}</b> <span class="m">${st===1?'day':'days'} in a row</span>
+    <div class="btns" style="align-items:center"><span class="m">Daily goal (min)</span><button class="btn o" data-g="-5">&minus;</button><b>${goal}</b><button class="btn o" data-g="5">+</button></div>`,
+    r=>r.onclick=e=>{const g=e.target.dataset.g;if(g){store.set('goal',Math.max(5,goal+ +g));statsSheet()}});
+}
+$('statsBtn').onclick=statsSheet;
+
+/* splash: show for 4 seconds */
+setTimeout(()=>{const sp=$('splash');sp.classList.add('out');setTimeout(()=>sp.remove(),700)},4000);
 renderLib();
 </script></body></html>
