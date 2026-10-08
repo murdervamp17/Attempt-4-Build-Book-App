@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#eaf5fd">
+<title>Pages</title>
+<link rel="stylesheet" href="lib/pdf_viewer.css">
+<style>
+:root{--blue:#8fcdf4;--blue-d:#3f95cf;--blue-l:#eaf5fd;--ink:#1d3347;--paper:#f6fafd;--mute:#6d8296}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:Palatino,'Palatino Linotype','Book Antiqua',Georgia,serif;overscroll-behavior:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.screen{position:fixed;inset:0;display:none;flex-direction:column;padding-top:env(safe-area-inset-top)}
+.screen.on{display:flex}
+/* library */
+#lib header{padding:30px 24px 10px}
+#lib h1{margin:0;font-size:34px;font-weight:700;letter-spacing:-.02em}
+#lib header p{margin:6px 0 0;color:var(--mute);font-style:italic;font-size:15px}
+#grid{flex:1;overflow:auto;padding:18px 24px calc(120px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(2,1fr);gap:26px 20px;align-content:start}
+.book{text-align:left;user-select:none;-webkit-user-select:none}
+.cover{aspect-ratio:2/3;border-radius:4px 9px 9px 4px;background:var(--blue) center/cover;position:relative;overflow:hidden;box-shadow:0 14px 22px -14px rgba(30,80,120,.65),inset 5px 0 0 rgba(255,255,255,.4),inset 6px 0 6px -4px rgba(0,0,0,.18)}
+.cover .prog{position:absolute;left:0;right:0;bottom:0;height:5px;background:rgba(255,255,255,.7)}
+.cover .prog i{display:block;height:100%;background:var(--blue-d)}
+.bt{margin-top:10px;font-size:14px;line-height:1.3;max-height:2.7em;overflow:hidden}
+.bm{font-size:12px;color:var(--mute);margin-top:2px}
+#empty{grid-column:1/-1;text-align:center;color:var(--mute);margin-top:18vh;line-height:1.6}
+#empty b{display:block;color:var(--ink);font-size:20px;margin-bottom:6px}
+#add{position:fixed;right:24px;bottom:calc(26px + env(safe-area-inset-bottom));height:56px;padding:0 24px;border-radius:28px;background:var(--blue);color:#0f2b40;font-weight:700;font-size:16px;box-shadow:0 12px 24px -10px rgba(40,120,180,.8)}
+#add:active{background:var(--blue-d);color:#fff}
+/* reader */
+#rd{background:var(--blue-l)}
+#top{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--paper);border-bottom:2px solid var(--blue)}
+#top .t{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
+.ic{width:42px;height:42px;border-radius:21px;font-size:22px;line-height:1;color:var(--blue-d)}
+.ic:active{background:var(--blue-l)}
+#stage{flex:1;overflow:auto;padding:12px;display:flex;touch-action:pan-x pan-y}
+#sheet{position:relative;margin:0 auto;background:#fff;box-shadow:0 10px 30px -12px rgba(30,80,120,.5);flex:none}
+#sheet canvas{display:block}
+.textLayer{position:absolute;inset:0;opacity:1;line-height:1}
+.textLayer span{color:transparent}
+.textLayer ::selection{background:rgba(63,149,207,.35)}
+#def{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom));background:var(--ink);color:#fff;border-radius:24px;padding:12px 22px;font-size:15px;box-shadow:0 10px 24px -8px rgba(0,0,0,.5);display:none;max-width:88vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#def.on{display:block}
+#nav{display:flex;align-items:center;gap:8px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:var(--paper);border-top:2px solid var(--blue)}
+#nav .ic{background:var(--blue);color:#0f2b40;font-weight:700}
+#nav .ic:disabled{opacity:.35}
+#mid{flex:1;text-align:center;font-size:13px;color:var(--mute)}
+#sl{width:100%;accent-color:var(--blue-d);margin:0}
+#toast{position:fixed;top:calc(16px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:20px;font-size:14px;display:none;z-index:9}
+</style></head><body>
+
+<section id="lib" class="screen on">
+  <header><h1>Pages</h1><p id="count"></p></header>
+  <div id="grid"></div>
+  <button id="add">Import PDF</button>
+  <input id="file" type="file" accept="application/pdf,.pdf" multiple hidden>
+</section>
+
+<section id="rd" class="screen">
+  <div id="top">
+    <button class="ic" id="back" aria-label="Back to library">&#8592;</button>
+    <div class="t" id="title"></div>
+    <button class="ic" id="zo" aria-label="Zoom out">&minus;</button>
+    <button class="ic" id="zi" aria-label="Zoom in">+</button>
+  </div>
+  <div id="stage"><div id="sheet"></div></div>
+  <button id="def"></button>
+  <div id="nav">
+    <button class="ic" id="prev" aria-label="Previous page">&#8249;</button>
+    <div id="mid"><input id="sl" type="range" min="1" max="1" value="1"><span id="lbl"></span></div>
+    <button class="ic" id="next" aria-label="Next page">&#8250;</button>
+  </div>
+</section>
+<div id="toast"></div>
+
+<script src="lib/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js';
+const $=id=>document.getElementById(id);
+const toast=m=>{const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2800)};
+
+/* storage: metadata and file blobs in IndexedDB */
+const dbp=new Promise((res,rej)=>{const r=indexedDB.open('pages',1);
+  r.onupgradeneeded=()=>{r.result.createObjectStore('meta',{keyPath:'id'});r.result.createObjectStore('files',{keyPath:'id'})};
+  r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const tx=async(store,mode,fn)=>{const d=await dbp;return new Promise((res,rej)=>{const t=d.transaction(store,mode);const q=fn(t.objectStore(store));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)})};
+
+let pdf=null,book=null,cur=1,zoom=1,rid=0;
+
+/* library */
+async function renderLib(){
+  const list=(await tx('meta','readonly',s=>s.getAll())).sort((a,b)=>b.opened-a.opened);
+  $('count').textContent=list.length?list.length+(list.length===1?' book':' books'):'Your shelf is empty';
+  const g=$('grid');g.replaceChildren();
+  if(!list.length){g.innerHTML='<div id="empty"><b>No books yet</b>Tap Import PDF to add your first one.</div>';return}
+  for(const b of list){
+    const el=document.createElement('button');el.className='book';
+    el.innerHTML='<div class="cover"><div class="prog"><i></i></div></div><div class="bt"></div><div class="bm"></div>';
+    el.querySelector('.cover').style.backgroundImage=b.cover?`url(${b.cover})`:'';
+    el.querySelector('.prog i').style.width=(b.page/b.pages*100)+'%';
+    el.querySelector('.bt').textContent=b.title;
+    el.querySelector('.bm').textContent=`Page ${b.page} of ${b.pages}`;
+    let held=false,h;
+    el.addEventListener('touchstart',()=>{held=false;h=setTimeout(async()=>{held=true;if(confirm(`Remove “${b.title}” from your library?`)){await tx('meta','readwrite',s=>s.delete(b.id));await tx('files','readwrite',s=>s.delete(b.id));renderLib()}},650)},{passive:true});
+    ['touchend','touchmove','touchcancel'].forEach(e=>el.addEventListener(e,()=>clearTimeout(h),{passive:true}));
+    el.addEventListener('click',()=>{if(!held)openBook(b.id)});
+    el.addEventListener('contextmenu',e=>e.preventDefault());
+    g.appendChild(el);
+  }
+}
+$('add').onclick=()=>$('file').click();
+$('file').onchange=async e=>{
+  const files=[...e.target.files];e.target.value='';
+  for(const f of files){
+    try{
+      toast('Importing '+f.name+'…');
+      const doc=await pdfjsLib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise;
+      const p=await doc.getPage(1),v0=p.getViewport({scale:1}),sc=360/v0.width,v=p.getViewport({scale:sc});
+      const c=document.createElement('canvas');c.width=v.width;c.height=v.height;
+      await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;
+      const id=Date.now()+Math.random().toString(36).slice(2,6);
+      await tx('files','readwrite',s=>s.put({id,blob:f}));
+      await tx('meta','readwrite',s=>s.put({id,title:f.name.replace(/\.pdf$/i,''),pages:doc.numPages,page:1,cover:c.toDataURL('image/jpeg',.8),opened:Date.now()}));
+      doc.destroy();
+    }catch(err){toast('Could not import '+f.name)}
+  }
+  renderLib();
+};
+
+/* reader */
+async function openBook(id){
+  try{
+    book=await tx('meta','readonly',s=>s.get(id));
+    const f=await tx('files','readonly',s=>s.get(id));
+    pdf=await pdfjsLib.getDocument({data:new Uint8Array(await f.blob.arrayBuffer())}).promise;
+  }catch(e){return toast('Could not open this book')}
+  $('title').textContent=book.title;$('sl').max=pdf.numPages;zoom=1;
+  $('lib').classList.remove('on');$('rd').classList.add('on');
+  show(book.page||1);
+}
+async function closeBook(){
+  rid++;hideDef();$('rd').classList.remove('on');$('lib').classList.add('on');
+  if(pdf){pdf.destroy();pdf=null}
+  await renderLib();
+}
+async function show(n){
+  if(!pdf)return;
+  n=Math.max(1,Math.min(pdf.numPages,n));cur=n;const id=++rid;hideDef();
+  $('lbl').textContent=`Page ${n} of ${pdf.numPages}`;$('sl').value=n;
+  $('prev').disabled=n<=1;$('next').disabled=n>=pdf.numPages;
+  const p=await pdf.getPage(n);if(id!==rid)return;
+  const stage=$('stage'),base=p.getViewport({scale:1});
+  const vp=p.getViewport({scale:(stage.clientWidth-24)/base.width*zoom}),dpr=window.devicePixelRatio||1;
+  const c=document.createElement('canvas');c.width=vp.width*dpr;c.height=vp.height*dpr;
+  c.style.width=vp.width+'px';c.style.height=vp.height+'px';
+  await p.render({canvasContext:c.getContext('2d'),viewport:vp,transform:dpr!==1?[dpr,0,0,dpr,0,0]:null}).promise;
+  if(id!==rid)return;
+  const t=document.createElement('div');t.className='textLayer';t.style.setProperty('--scale-factor',vp.scale);
+  await pdfjsLib.renderTextLayer({textContentSource:await p.getTextContent(),container:t,viewport:vp}).promise;
+  if(id!==rid)return;
+  const sh=$('sheet');sh.style.width=vp.width+'px';sh.style.height=vp.height+'px';
+  sh.replaceChildren(c,t);stage.scrollTo(0,0);
+  book.page=n;book.opened=Date.now();tx('meta','readwrite',s=>s.put(book));
+}
+$('back').onclick=closeBook;
+$('prev').onclick=()=>show(cur-1);$('next').onclick=()=>show(cur+1);
+$('sl').oninput=e=>$('lbl').textContent=`Page ${e.target.value} of ${pdf.numPages}`;
+$('sl').onchange=e=>show(+e.target.value);
+$('zi').onclick=()=>{zoom=Math.min(3,zoom+.25);show(cur)};
+$('zo').onclick=()=>{zoom=Math.max(1,zoom-.25);show(cur)};
+document.addEventListener('keydown',e=>{if(!pdf)return;if(e.key==='ArrowRight')show(cur+1);if(e.key==='ArrowLeft')show(cur-1)});
+
+/* swipe to turn pages */
+let sx=0,sy=0;
+$('stage').addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
+$('stage').addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
+  if(Math.abs(dx)>70&&Math.abs(dy)<45&&!getSelection().toString().trim()&&zoom===1)show(cur+(dx<0?1:-1));
+},{passive:true});
+
+/* highlight a word -> Google definition */
+let word='',selT;
+function hideDef(){$('def').classList.remove('on');word=''}
+document.addEventListener('selectionchange',()=>{
+  clearTimeout(selT);
+  selT=setTimeout(()=>{
+    const s=getSelection();
+    if(!pdf||!s.rangeCount||!$('sheet').contains(s.anchorNode))return hideDef();
+    const w=s.toString().replace(/\s+/g,' ').trim().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,'');
+    if(!w||w.length>60)return hideDef();
+    word=w;$('def').textContent=`Define “${w}” on Google`;$('def').classList.add('on');
+  },250);
+});
+$('def').addEventListener('mousedown',e=>e.preventDefault());
+$('def').onclick=()=>{if(word)window.open('https://www.google.com/search?q='+encodeURIComponent('define '+word),'_blank')};
+
+/* Android back button */
+const App=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.App;
+if(App)App.addListener('backButton',()=>{if($('rd').classList.contains('on'))closeBook();else App.exitApp()});
+
+renderLib();
+</script></body></html>
