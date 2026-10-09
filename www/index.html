@@ -88,9 +88,9 @@ body.imm #top{margin-top:-62px;opacity:0}body.imm #nav{margin-bottom:-76px;opaci
 #scrim{display:block;opacity:0;pointer-events:none;transition:opacity .25s}#scrim.on{opacity:1;pointer-events:auto}
 .fi{width:100%;height:42px;border-radius:21px;border:2px solid var(--blue);background:var(--bg);padding:0 16px;margin-bottom:8px;outline:0}
 .tabs{flex-wrap:wrap}
-#splash{position:fixed;inset:0;z-index:99;background:var(--tint);display:flex;align-items:center;justify-content:center;transition:opacity .6s}
+#splash{position:fixed;inset:0;z-index:99;background:#eaf5fd;display:flex;align-items:center;justify-content:center;transition:opacity .6s}
 #splash img{width:200px;height:200px;border-radius:44px;animation:up .9s cubic-bezier(.2,.8,.2,1) both;box-shadow:0 20px 40px -18px rgba(30,80,120,.5)}
-#splash b{position:absolute;bottom:calc(12vh + env(safe-area-inset-bottom));font-size:34px;letter-spacing:.06em;color:var(--ink);animation:up .9s .3s both}
+#splash b{position:absolute;bottom:calc(12vh + env(safe-area-inset-bottom));font-size:34px;letter-spacing:.06em;color:#1d3347;animation:up .9s .3s both}
 #splash.out{opacity:0;pointer-events:none}
 .bars{display:flex;gap:6px;align-items:flex-end;height:70px;margin-top:10px}.bars i{flex:1;background:var(--blue);border-radius:4px 4px 0 0;min-height:3px}
 #hlbar{position:fixed;left:50%;transform:translateX(-50%) translateY(10px);bottom:calc(150px + env(safe-area-inset-bottom));display:flex;gap:14px;background:var(--ink);padding:10px 16px;border-radius:28px;opacity:0;pointer-events:none;transition:opacity .2s,transform .25s cubic-bezier(.2,.8,.2,1);z-index:3}
@@ -160,7 +160,7 @@ body.imm #top{margin-top:-62px;opacity:0}body.imm #nav{margin-bottom:-76px;opaci
 <div id="welcome"><div id="wc"></div><h2>Hello, reader</h2><p>What should I call you?</p><input id="wn" class="fi" maxlength="24" placeholder="Your name" autocomplete="off"><button id="wgo" class="btn">Begin</button></div>
 <div id="scrim"></div><div id="sh"><div id="shc"></div></div><div id="toast"></div>
 
-<div id="splash"><div id="sp"></div><b>Paged</b></div>
+<div id="splash"><img src="icon.png" alt=""><b>Paged</b></div>
 <script src="lib/pdf.min.js"></script>
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js';
@@ -185,10 +185,10 @@ const buzz=()=>{try{const H=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugi
 function catSvg(o={}){const s=o.size||64;
   return `<svg width="${s}" height="${s}" viewBox="0 0 100 100" aria-hidden="true">${o.books?'<rect x="52" y="76" width="44" height="9" rx="2" fill="#6f9bd1"/><rect x="48" y="85" width="48" height="9" rx="2" fill="#4a73ab"/>':''}<g fill="currentColor"><ellipse cx="46" cy="70" rx="24" ry="22"/><circle cx="48" cy="40" r="21"/><path d="M29 28L32 7 46 20Z M67 28L64 7 50 20Z"/></g><circle cx="40" cy="40" r="6" fill="#f3e3c8"/><circle cx="57" cy="40" r="6" fill="#f3e3c8"/><circle cx="41" cy="41" r="2.8" fill="currentColor"/><circle cx="58" cy="41" r="2.8" fill="currentColor"/>${o.blink?'<g class="lids" fill="currentColor"><rect x="33" y="33" width="14" height="14" rx="7"/><rect x="50" y="33" width="14" height="14" rx="7"/></g>':''}${o.mono?'<circle cx="57" cy="40" r="9.5" fill="none" stroke="#e0b84a" stroke-width="3"/><path d="M63 48Q74 58 68 76" fill="none" stroke="#e0b84a" stroke-width="2.4" stroke-linecap="round"/>':''}</svg>`}
 $('libTheme').innerHTML=$('disp').innerHTML=catSvg({mono:1,size:32});
-$('sp').innerHTML=catSvg({size:190,blink:1,books:1});$('wc').innerHTML=catSvg({size:150,blink:1,books:1});
+$('wc').innerHTML=catSvg({size:150,books:1});
 function extraDisplay(){const f=store.get('font')||'serif',t=store.get('tint')||'blue',a=store.get('accent')||'blue',h='class="btns" style="margin-top:6px"';
   return `<h3>Font</h3><div ${h}>${['serif','sans'].map(k=>`<button class="chip ${k===f?'on':''}" data-f="${k}">${k==='serif'?'Serif':'Sans'}</button>`).join('')}</div><h3>Background (Light theme)</h3><div ${h}>${[['blue','Blue'],['mist','Mist'],['paper','Paper']].map(([k,n])=>`<button class="chip ${k===t?'on':''}" data-tn="${k}">${n}</button>`).join('')}</div><h3>Accent</h3><div ${h}>${Object.keys(ACC).map(k=>`<button class="dot ${k===a?'sel':''}" data-ac="${k}" style="background:${ACC[k][0]}"></button>`).join('')}</div><h3>Your name</h3><input id="nmi" class="fi" value="${esc(store.get('name')||'')}" placeholder="Your name">`}
-shc.addEventListener('input',e=>{if(e.target.id==='nmi'){store.set('name',e.target.value.trim());greet()}});
+document.addEventListener('input',e=>{if(e.target.id==='nmi'){store.set('name',e.target.value.trim());greet()}});
 function greet(){const h=new Date().getHours(),g=h<5?'Still up':h<12?'Good morning':h<18?'Good afternoon':'Good evening',n=store.get('name');$('hello').innerHTML=`<small>${g}${n?',':''}</small>${esc(n||'Paged')}`}
 setTheme(store.get('theme')||'light');
 
@@ -226,7 +226,7 @@ async function renderLib(){greet();
   let list=all.filter(b=>(shelf==='finished')===!!b.done&&b.title.toLowerCase().includes(q));
   list.sort(sort==='title'?(a,b)=>a.title.localeCompare(b.title):sort==='progress'?(a,b)=>b.page/b.pages-a.page/a.pages:(a,b)=>b.opened-a.opened);
   const g=$('grid');g.replaceChildren();
-  if(!list.length){g.innerHTML=`<div id="empty">${catSvg({size:130,blink:1,books:1})}<b>${all.length?'Nothing here':'No books yet'}</b>${all.length?(q?'No books match your search.':'This shelf is empty.'):'Tap Import PDF to add your first one.'}</div>`;return}
+  if(!list.length){g.innerHTML=`<div id="empty">${catSvg({size:130,books:1})}<b>${all.length?'Nothing here':'No books yet'}</b>${all.length?(q?'No books match your search.':'This shelf is empty.'):'Tap Import PDF to add your first one.'}</div>`;return}
   if(shelf==='reading'&&!q){const cb=all.filter(b=>!b.done).sort((a,b)=>b.opened-a.opened)[0];if(cb)g.appendChild(contCard(cb))}
   for(const b of list){
     const el=document.createElement('button');el.className='book';el.style.animationDelay=Math.min(g.children.length,10)*35+'ms';
@@ -305,8 +305,7 @@ async function show(n){
   await p.render({canvasContext:c.getContext('2d'),viewport:vp,transform:[dpr,0,0,dpr,-bx*sc*dpr,-by*sc*dpr]}).promise;
   if(id!==rid)return;
   const t=document.createElement('div');t.className='textLayer';t.style.cssText=`inset:auto;left:${-bx*sc}px;top:${-by*sc}px;width:${base.width*sc}px;height:${base.height*sc}px`;t.style.setProperty('--scale-factor',vp.scale);
-  await pdfjsLib.renderTextLayer({textContentSource:await p.getTextContent(),container:t,viewport:vp}).promise;
-  if(id!==rid)return;
+  p.getTextContent().then(tc=>{if(id===rid)pdfjsLib.renderTextLayer({textContentSource:tc,container:t,viewport:vp})});
   const s=$('sheet');s.style.width=W+'px';s.style.height=H+'px';s.style.transform='';
   const hl=document.createElement('div');hl.id='hll';hl.style.cssText='position:absolute;pointer-events:none;'+t.style.cssText;curSc=sc;
   s.replaceChildren(c,hl,t);drawHl();stage.scrollTo(0,0);
@@ -491,7 +490,7 @@ async function coverFor(c,title){
   k.save();k.beginPath();k.roundRect(142,396,80,80,18);k.clip();k.drawImage(im,142,396,80,80);k.restore();
   return g.toDataURL('image/jpeg',.85)}
 function celebrate(msg){const d=document.createElement('div');d.id='cel';
-  d.innerHTML=catSvg({size:110,blink:1,books:1})+`<b>${esc(msg)}</b>`+Array.from({length:26},(_,i)=>`<i style="left:${Math.random()*100}%;animation-delay:${Math.random()*.6}s;background:${['#8fcdf4','#c9bdf2','#add8b8','#f5bccd','#ffd60a'][i%5]}"></i>`).join('');
+  d.innerHTML=catSvg({size:110,books:1})+`<b>${esc(msg)}</b>`+Array.from({length:26},(_,i)=>`<i style="left:${Math.random()*100}%;animation-delay:${Math.random()*.6}s;background:${['#8fcdf4','#c9bdf2','#add8b8','#f5bccd','#ffd60a'][i%5]}"></i>`).join('');
   document.body.appendChild(d);buzz();setTimeout(()=>d.classList.add('out'),2600);setTimeout(()=>d.remove(),3100)}
 let shelfView=store.get('view')!=='grid';
 const applyView=()=>{$('grid').classList.toggle('shelf',shelfView);$('view').textContent=shelfView?'Shelf':'Grid'};
@@ -501,4 +500,3 @@ $('wgo').onclick=()=>{const n=$('wn').value.trim();if(!n)return $('wn').focus();
 setTimeout(()=>{const sp=$('splash');sp.classList.add('out');setTimeout(()=>sp.remove(),700);if(!store.get('name'))$('welcome').classList.add('on')},4000);
 renderLib();
 </script></body></html>
-
